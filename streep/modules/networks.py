@@ -1,9 +1,13 @@
+from typing import Callable, List, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+Tensor = torch.Tensor
+
 class MLP(nn.Module):
-    def __init__(self, dims: list[int], zero_init: bool = False, output_activation=None):
+    def __init__(self, dims: List[int], zero_init: bool = False, output_activation: Optional[Callable] = None) -> None:
         super(MLP, self).__init__()
         assert len(dims) >= 2
         self.network = nn.ModuleList([])
@@ -15,7 +19,7 @@ class MLP(nn.Module):
             self.network.append(layer)
         self.output_activation = output_activation
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         for i, layer in enumerate(self.network):
             x = layer(x)
             if i < len(self.network)-1:
@@ -23,3 +27,20 @@ class MLP(nn.Module):
         if self.output_activation:
             x = self.output_activation(x)
         return x
+    
+class DistParams(nn.Module):
+    def __init__(self, hdim: int, zdim: int) -> None:
+        super(DistParams, self).__init__()
+        self.alpha = nn.Linear(hdim, zdim)
+        self.beta = nn.Linear(hdim, zdim)
+
+        self.alpha.weight.data.zero_()
+        self.alpha.bias.data.fill_(1.)
+
+        self.beta.weight.data.zero_()
+        self.beta.bias.data.fill_(1.)
+
+    def forward(self, x: Tensor) -> Tuple[Tensor,Tensor]:
+        alpha = F.softplus(self.alpha(x))
+        beta = F.softplus(self.beta(x))
+        return alpha, beta
