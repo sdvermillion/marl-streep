@@ -48,6 +48,9 @@ class InverseGamma(TransformedDistribution):
     
 def _matmul(x, S, y):
     return (x[...,None,:]@S@y[...,None])[...,0,0]
+
+def _safe_log(x):
+    return x.clamp(min=torch.finfo(x.dtype).eps).log()
     
 class CircularProjectedNormal(Distribution):
     arg_constraints = {
@@ -82,9 +85,7 @@ class CircularProjectedNormal(Distribution):
             self._validate_sample(u)
 
         A = _matmul(u, self.S_inv, u)
-        print(A)
         B = _matmul(u, self.S_inv, self.loc)
-        print(B)
         D = B/A.sqrt()
 
         Phi = 0.5*(1 + torch.erf(D*0.5**0.5)) 
